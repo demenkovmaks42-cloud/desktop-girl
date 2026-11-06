@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="utf-8"><title>Desktop girl</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:transparent;pointer-events:none}
+canvas{position:fixed;inset:0;width:100vw;height:100vh;image-rendering:pixelated}
+#b{position:fixed;transform:translate(-50%,-100%);background:#fff;color:#3a2a3a;border:2px solid #3a2a3a;border-radius:8px;padding:4px 8px;font:14px system-ui,sans-serif;white-space:nowrap;opacity:0}
+#b.on{opacity:1}
+</style></head><body>
+<canvas id="c"></canvas><div id="b"></div>
+<script>
+const {ipcRenderer}=require('electron');
+const S=4,cv=document.getElementById('c'),g=cv.getContext('2d'),bub=document.getElementById('b');
+let W,H;
+const K={skin:'#ffd9c2',hair:'#ff8fb8',hairD:'#e0638f',eye:'#2f2f7f',white:'#fff',navy:'#3d4a9a',red:'#e83e5a',shoe:'#5a3a3a',blush:'#ff9aa8'};
+const R=(x,y,w,h,c)=>{g.fillStyle=c;g.fillRect(Math.round(x),Math.round(y),w,h)};
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const G={x:200,y:0,dir:1,mode:'idle',timer:60,t:0,p:0,len:0,tx:0,jump:0,echoIn:0,echoA:null,say:0};
+const hist=[],hearts=[];let mouse={x:0,y:0};
+const ME={jump:'прыгаю',wave:'машу',sit:'присяду',dance:'танцую',go:'иду туда, где ты был(а)',type:'печатаю'};
+const LEN={jump:45,wave:110,sit:150,dance:160,type:180};
+function size(){W=Math.ceil(innerWidth/S);H=Math.ceil(innerHeight/S);cv.width=W;cv.height=H;G.y=H-3;G.x=Math.min(G.x,W-14)}
+size();addEventListener('resize',size);
+function talk(s,f){bub.textContent=s;bub.classList.add('on');G.say=f||150}
+function heart(x,y){hearts.push({x,y,l:50})}
+function startAct(a,echo){
+  if(a.type==='go'){G.tx=a.x;G.mode='walk'}else{G.mode=a.type;G.p=0;G.len=LEN[a.type]}
+  if(echo){talk('Как ты! Я тоже '+ME[a.type]+'!');heart(G.x,G.y-32)}
+}
+function echo(a){startAct(a||hist[hist.length-1-Math.floor(Math.random()*Math.min(4,hist.length))],true)}
+function userDo(a){
+  hist.push(a);if(hist.length>6)hist.shift();
+  if(Math.random()<.7){G.echoA=a;G.echoIn=Math.round(rnd(150,420))}
+}
+function decide(){
+  if(hist.length&&Math.random()<.3)return echo();
+  G.tx=rnd(14,W-14);G.mode='walk';
+}
+function update(){
+  G.t++;
+  if(G.say>0&&--G.say===0)bub.classList.remove('on');
+  if(G.echoIn>0&&--G.echoIn===0&&(G.mode==='idle'||G.mode==='walk'))echo(G.echoA);
+  if(G.mode==='walk'){
+    const dx=G.tx-G.x;
+    if(Math.abs(dx)<.6){G.mode='idle';G.timer=rnd(60,240)}
+    else{G.x+=Math.sign(dx)*.3;G.dir=Math.sign(dx)}
+  }else if(G.mode==='idle'){
+    if(--G.timer<=0)decide();
+  }else{
+    G.p++;
+    G.jump=G.mode==='jump'?Math.sin(Math.PI*G.p/G.len)*14:0;
+    if(G.mode==='dance'&&G.p%25===0)heart(G.x+rnd(-8,8),G.y-34);
+    if(G.p>=G.len){G.mode='idle';G.timer=50;G.jump=0}
+  }
+  hearts.forEach(h=>{h.y-=.35;h.l--});
+  for(let i=hearts.length-1;i>=0;i--)if(hearts[i].l<=0)hearts.splice(i,1);
+}
+function drawHeart(x,y){[[0,0,2,1],[3,0,2,1],[0,1,5,2],[1,3,3,1],[2,4,1,1]].forEach(p=>R(x+p[0],y+p[1],p[2],p[3],'#ff4f86'))}
+function drawGirl(){
+  const m=G.mode,walking=m==='walk',sit=m==='sit'||m==='type';
+  const step=walking?Math.floor(G.t/8)%2:0;
+  let sway=0,bob=0;
+  if(walking)bob=step?-1:0;
+  if(m==='dance'){sway=Math.round(Math.sin(G.t/6)*2);bob=Math.floor(G.t/10)%2?-1:0}
+  const cx=G.x+sway,by=G.y-G.jump,oy=(sit?4:0)+bob;
+  const r=(dx,dy,w,h,c)=>R(cx+dx,by+dy+oy,w,h,c);
+  R(G.x-5,G.y+1,10,1,'rgba(0,0,0,.18)');
+  // twin tails
+  const tw=(m==='dance'||m==='jump')?Math.round(Math.sin(G.t/4)):0;
+  r(-9+tw,-23,3,9,K.hair);r(-9+tw,-14,2,4,K.hairD);r(6-tw,-23,3,9,K.hair);r(7-tw,-14,2,4,K.hairD);
+  // legs
+  if(!sit){
+    const lA=step===0?0:1,lB=step===1?0:1;
+    R(cx-3,by-4+lA,2,4-lA,K.skin);R(cx+1,by-4+lB,2,4-lB,K.skin);
+    R(cx-3,by-1+lA*0,2,1,K.shoe);R(cx+1,by-1,2,1,K.shoe);
+    if(lA)R(cx-3,by-2,2,1,K.shoe);if(lB)R(cx+1,by-2,2,1,K.shoe);
+  }else{R(cx-4,by-1,3,1,K.shoe);R(cx+1,by-1,3,1,K.shoe)}
+  // torso + skirt
+  r(-3,-14,6,5,K.white);r(-1,-13,2,2,K.red);r(-4,-9,8,5,K.navy);r(-2,-9,1,5,'#5563b8');r(1,-9,1,5,'#5563b8');
+  // arms
+  const up=m==='jump'||m==='dance',wv=m==='wave',ty=m==='type';
+  const wf=Math.floor(G.t/9)%2;
+  if(up){
+    const a=m==='dance'&&Math.floor(G.t/10)%2;
+    r(-6,a?-20:-22,2,5,K.white);r(-6,a?-21:-23,2,1,K.skin);r(4,a?-22:-20,2,5,K.white);r(4,a?-23:-21,2,1,K.skin);
+  }else if(ty){
+    const f=Math.floor(G.t/4)%2;r(-5,-13+f,2,3,K.white);r(-5,-10+f,2,1,K.skin);r(3,-14+f,2,3,K.white);r(3,-11+f,2,1,K.skin);
+  }else{
+    r(-5,-14,2,4,K.white);r(-5,-10,2,1,K.skin);
+    if(wv){r(wf?5:4,-21,2,5,K.white);r(wf?5:4,-22,2,1,K.skin)}
+    else{r(3,-14,2,4,K.white);r(3,-10,2,1,K.skin)}
+  }
+  // head
+  r(-5,-23,10,9,K.skin);
+  r(-6,-26,12,4,K.hair);r(-6,-23,2,7,K.hair);r(4,-23,2,7,K.hair);
+  r(-5,-23,10,2,K.hair);r(-3,-21,2,1,K.hair);r(1,-21,3,1,K.hair);
+  r(-5,-25,3,1,K.hairD);r(2,-26,3,1,'#ffc2da');
+  r(5,-26,3,3,K.red);r(7,-27,1,1,K.red); // bow
+  // eyes
+  let sh=0;
+  if(walking)sh=G.dir;else{const d=mouse.x-G.x;sh=d>12?1:d<-12?-1:0}
+  const blink=G.t%200<6||sit&&G.p%60<6;
+  if(blink){r(-3+sh,-18,2,1,K.eye);r(1+sh,-18,2,1,K.eye)}
+  else{r(-3+sh,-20,2,3,K.eye);r(1+sh,-20,2,3,K.eye);r(-3+sh,-20,1,1,K.white);r(1+sh,-20,1,1,K.white)}
+  r(-4,-17,2,1,K.blush);r(2,-17,2,1,K.blush);
+  r(0,-16,1,1,'#c2506a');
+}
+
+function frame(){
+  g.clearRect(0,0,W,H);drawGirl();
+  hearts.forEach(h=>drawHeart(h.x-2,h.y));
+  bub.style.left=(G.x*S)+'px';bub.style.top=((G.y-G.jump-36)*S)+'px';
+}
+// --- реакция на пользователя ---
+let lastMove=Date.now(),lastPos={x:0,y:0},lastGo=-999;
+ipcRenderer.on('cursor',(e,p)=>{
+  mouse={x:p.x/S,y:p.y/S};
+  if(Math.hypot(p.x-lastPos.x,p.y-lastPos.y)>4){lastMove=Date.now();lastPos=p}
+  else if(Date.now()-lastMove>3000&&Math.abs(mouse.x-lastGo)>25){lastGo=mouse.x;userDo({type:'go',x:Math.max(14,Math.min(W-14,mouse.x))})}
+});
+ipcRenderer.on('click',()=>userDo({type:'jump'}));
+ipcRenderer.on('typing',()=>userDo({type:'type'}));
+let last=performance.now(),acc=0;
+function loop(n){acc+=Math.min(n-last,100);last=n;while(acc>=16.67){update();acc-=16.67}frame();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+</script></body></html>
