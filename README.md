@@ -106,7 +106,7 @@ npm run start:linux
 Нужен [Node.js](https://nodejs.org) LTS (22 или 24).
 
 ```bash
-git clone <адрес-репозитория>
+git clone https://github.com/demenkovmaks42-cloud/desktop-girl
 cd desktop-girl
 npm install
 npm start
