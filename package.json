@@ -1,18 +1,13 @@
 {
   "name": "desktop-girl",
   "version": "1.0.0",
+  "description": "Маленькая пиксельная тян, которая ходит по рабочему столу и иногда повторяет за тобой",
   "main": "main.js",
+  "license": "MIT",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "start:linux": "electron . --no-sandbox --ozone-platform=x11"
   },
-  "devDependencies": {
-    "electron": "^33.0.0"
-  },
-  "optionalDependencies": {
-    "uiohook-napi": "^1.5.4"
-  },
-  "allowScripts": {
-    "electron@33.4.11": true,
-    "uiohook-napi@1.5.5": true
-  }
+  "devDependencies": { "electron": "^33.0.0" },
+  "optionalDependencies": { "uiohook-napi": "^1.5.4" }
 }
